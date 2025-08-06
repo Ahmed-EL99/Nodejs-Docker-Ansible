@@ -1,0 +1,42 @@
+---
+- name: deploy nodejs using containers and my own dockerfile image
+  hosts: ubuntu-target
+  become: yes
+
+
+  tasks:
+    - name: transfer the docker file from control node to manged node
+      copy:
+        src: /home/kady/simpleweb/
+        dest: /home/user/docker_projects
+        mode: "0755"
+    - name: build the image
+      community.docker.docker_image:
+        name: nodejs_dummy
+        tag: latest
+        source: build
+        build:
+          path: /home/user/docker_projects
+          rm: true
+
+    - name: create a container of the image and run it
+      community.docker.docker_container:
+        name: nodejs_app
+        image: nodejs_dummy
+        ports:
+          - "8080:8080"
+
+    - name: check if the container is active
+      wait_for:
+        port: 8080
+        state: started
+
+    - name: getss nodejs reply to a request
+      uri:
+        url: http://localhost:8080
+        return_content: true
+      register: web_response
+
+    - name: shows nodejs reply
+      debug:
+        msg: "{{ web_response.content }}"
